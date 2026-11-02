@@ -59,7 +59,7 @@ jobs:
       - name: Build the browser editor
         env:
           FOTUFILM_BASE: /fotufilm-demo/
-        run: flutter/tool/build-web.sh --assets web/public
+        run: flutter/tool/build-web.sh --assets ../web/public
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
