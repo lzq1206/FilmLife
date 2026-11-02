@@ -1,0 +1,85 @@
+name: Build and deploy Fotufilm demo to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-26
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.41.7'
+          cache: true
+
+      - name: Install native build dependencies
+        run: brew install halide libraw little-cms2 libtiff
+
+      - name: Install Emscripten
+        run: |
+          mkdir -p build
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git build/emsdk
+          build/emsdk/emsdk install latest
+          build/emsdk/emsdk activate latest
+
+      - name: Build WebAssembly engine and browser assets
+        env:
+          EMSDK_ROOT: ${{ github.workspace }}/build/emsdk
+        run: tools/build-wasm.sh
+
+      - name: Install web dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build the browser editor
+        env:
+          FOTUFILM_BASE: /fotufilm-demo/
+        run: flutter/tool/build-web.sh --assets web/public
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: flutter/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
