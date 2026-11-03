@@ -40,8 +40,19 @@ jobs:
       - name: Install native build dependencies
         run: brew install halide libraw little-cms2 libtiff
 
-      - name: Install Swift WebAssembly SDK
-        run: swift sdk install https://download.swift.org/swift-6.3.3-release/wasm-sdk/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE_wasm.artifactbundle.tar.gz --checksum cabfa08b73bb8ac783927ecd15fa386e99d0c139c5f232445067bcf58379cae7
+      - name: Install Swiftly toolchain and WebAssembly SDK
+        run: |
+          curl --fail --location --silent --show-error https://download.swift.org/swiftly/darwin/swiftly.pkg --output "$RUNNER_TEMP/swiftly.pkg"
+          installer -pkg "$RUNNER_TEMP/swiftly.pkg" -target CurrentUserHomeDirectory
+          swiftly_home="$HOME/.swiftly"
+          "$swiftly_home/bin/swiftly" init --skip-install --no-modify-profile --quiet-shell-followup --assume-yes
+          source "$swiftly_home/env.sh"
+          swiftly install --use 6.3.3
+          hash -r
+          swift --version
+          swift sdk install https://download.swift.org/swift-6.3.3-release/wasm-sdk/swift-6.3.3-RELEASE/swift-6.3.3-RELEASE_wasm.artifactbundle.tar.gz --checksum cabfa08b73bb8ac783927ecd15fa386e99d0c139c5f232445067bcf58379cae7
+          swift sdk list
+          echo "$swiftly_home/bin" >> "$GITHUB_PATH"
 
       - name: Install Emscripten
         run: |
